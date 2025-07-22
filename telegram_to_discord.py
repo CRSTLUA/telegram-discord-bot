@@ -37,9 +37,8 @@ def parse_entities(text, entities):
         result += text[last_offset:ent.offset]
 
         if ent.type == 'text_link':
-            url = ent.url
             display_text = text[ent.offset:ent.offset + ent.length]
-            result += f"[{display_text}]({url})"
+            result += display_text  # Без посилання
         else:
             result += text[ent.offset:ent.offset + ent.length]
 
@@ -47,6 +46,7 @@ def parse_entities(text, entities):
 
     result += text[last_offset:]
     return result
+
 
 
 async def forward_to_discord(update: Update,
