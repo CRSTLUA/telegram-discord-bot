@@ -1,30 +1,19 @@
-import asyncio
 import httpx
+from flask import Flask, request
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
-
-from flask import Flask
-from threading import Thread
+from telegram.ext import Application, MessageHandler, ContextTypes, filters
+import asyncio
+import os
 
 TELEGRAM_TOKEN = '7833122280:AAGG0fc1bVBLSTD8DAjdkFrBBg88_kDm4gs'
 DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1396893886294790174/ioWp2uCe1jEp22FktJFqzsyQ1wPTm1zrI8T0kWexYMGF70rgQl0XfEwcuaMsd_XugABp'
+WEBHOOK_URL = 'https://telegram-discord-bot-xbca.onrender.com'  # 🔁 Замінити на твій справжній URL
 
 app = Flask(__name__)
+application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-
-@app.route('/')
-def home():
-    return "Bot is running"
-
-
-def run():
-    app.run(host='0.0.0.0', port=8080, debug=False, threaded=True)
-
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
+# 👇 Видаляємо непотрібні слова
+BANNED_WORDS = ['𝑪𝑹𝑺𝑻𝑳𝑼𝑨']
 
 def parse_entities(text, entities):
     if not entities:
@@ -35,14 +24,11 @@ def parse_entities(text, entities):
 
     for ent in entities:
         result += text[last_offset:ent.offset]
-
-        # Видаляємо посилання, залишаємо тільки текст
         if ent.type == 'text_link':
             display_text = text[ent.offset:ent.offset + ent.length]
             result += display_text
         else:
             result += text[ent.offset:ent.offset + ent.length]
-
         last_offset = ent.offset + ent.length
 
     result += text[last_offset:]
@@ -69,9 +55,7 @@ async def forward_to_discord(update: Update, context: ContextTypes.DEFAULT_TYPE)
             file = await message.video.get_file()
             content += f"\n[Відео]({file.file_path})"
 
-        # 🔻 Видаляємо непотрібне слово
-        banned_words = ['𝑪𝑹𝑺𝑻𝑳𝑼𝑨']
-        for word in banned_words:
+        for word in BANNED_WORDS:
             content = content.replace(word, '')
 
         if content.strip():
@@ -83,12 +67,30 @@ async def forward_to_discord(update: Update, context: ContextTypes.DEFAULT_TYPE)
         print(f"❌ Помилка при обробці повідомлення: {e}")
 
 
-if __name__ == '__main__':
-    keep_alive()
+application.add_handler(MessageHandler(filters.ALL, forward_to_discord))
 
-    app_bot = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    app_bot.add_handler(MessageHandler(filters.ALL, forward_to_discord))
 
-    print("🤖 Бот запущений. Очікую нові повідомлення...")
-    app_bot.run_polling()
+@app.route("/")
+def home():
+    return "Bot is running"
+
+
+@app.route("/webhook", methods=["POST"])
+async def webhook():
+    update = Update.de_json(request.json, application.bot)
+    await application.process_update(update)
+    return "ok"
+
+
+async def main():
+    await application.initialize()
+    await application.bot.set_webhook(WEBHOOK_URL)
+    await application.start()
+    print("🤖 Бот активував webhook")
+
+
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.create_task(main())
+    app.run(host="0.0.0.0", port=8080)
 
