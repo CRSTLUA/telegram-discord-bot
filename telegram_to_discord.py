@@ -13,7 +13,6 @@ application = Application.builder().token(TELEGRAM_TOKEN).build()
 
 BANNED_WORDS = ['𝑪𝑹𝑺𝑻𝑳𝑼𝑨']
 
-
 def parse_entities(text, entities):
     if not entities:
         return text
@@ -28,7 +27,6 @@ def parse_entities(text, entities):
 
     result += text[last_offset:]
     return result
-
 
 async def forward_to_discord(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("🟢 Отримано оновлення від Telegram")
@@ -63,14 +61,11 @@ async def forward_to_discord(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         print(f"❌ Помилка при обробці повідомлення: {e}")
 
-
 application.add_handler(MessageHandler(filters.ALL, forward_to_discord))
-
 
 @app.route('/')
 def home():
     return "✅ Bot is running"
-
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -82,13 +77,14 @@ def webhook():
         print(f"❌ Помилка обробки webhook: {e}")
     return 'ok', 200
 
-
 async def set_webhook():
     await application.initialize()
     await application.start()
     await application.bot.set_webhook(WEBHOOK_URL)
     print("🤖 Вебхук встановлено:", WEBHOOK_URL)
 
+@app.before_first_request
+def initialize():
+    loop = asyncio.get_event_loop()
+    loop.create_task(set_webhook())
 
-# Ініціалізація вебхука під час старту програми
-asyncio.run(set_webhook())
