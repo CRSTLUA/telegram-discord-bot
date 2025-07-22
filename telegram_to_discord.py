@@ -36,7 +36,7 @@ def parse_entities(text, entities):
     for ent in entities:
         result += text[last_offset:ent.offset]
 
-        # Видаляємо URL, залишаємо тільки текст
+        # Видаляємо посилання, залишаємо тільки текст
         if ent.type == 'text_link':
             display_text = text[ent.offset:ent.offset + ent.length]
             result += display_text
@@ -51,8 +51,6 @@ def parse_entities(text, entities):
 
 async def forward_to_discord(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        print("🚦 Отримано повідомлення з Telegram:", update)
-
         message = update.message or update.channel_post
         if not message:
             return
@@ -61,19 +59,22 @@ async def forward_to_discord(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         if message.text:
             content += parse_entities(message.text, message.entities)
-
         elif message.caption:
             content += parse_entities(message.caption, message.caption_entities)
 
         if message.photo:
             file = await message.photo[-1].get_file()
             content += f"\n[Фото]({file.file_path})"
-
         if message.video:
             file = await message.video.get_file()
             content += f"\n[Відео]({file.file_path})"
 
-        if content:
+        # 🔻 Видаляємо непотрібне слово
+        banned_words = ['𝑪𝑹𝑺𝑻𝑳𝑼𝑨']
+        for word in banned_words:
+            content = content.replace(word, '')
+
+        if content.strip():
             print("📤 Відправляю в Discord:", content)
             async with httpx.AsyncClient() as client:
                 await client.post(DISCORD_WEBHOOK_URL, json={"content": content})
@@ -83,7 +84,7 @@ async def forward_to_discord(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 if __name__ == '__main__':
-    keep_alive()  # Запускаємо вебсервер для Render/UptimeRobot
+    keep_alive()
 
     app_bot = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app_bot.add_handler(MessageHandler(filters.ALL, forward_to_discord))
