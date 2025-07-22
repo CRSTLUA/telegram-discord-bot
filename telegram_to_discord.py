@@ -3,17 +3,21 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, MessageHandler, ContextTypes, filters
 import asyncio
-import os
+import threading
+import json
 
 TELEGRAM_TOKEN = '7833122280:AAGG0fc1bVBLSTD8DAjdkFrBBg88_kDm4gs'
 DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1396893886294790174/ioWp2uCe1jEp22FktJFqzsyQ1wPTm1zrI8T0kWexYMGF70rgQl0XfEwcuaMsd_XugABp'
-WEBHOOK_URL = 'https://telegram-discord-bot-xbca.onrender.com'  # 🔁 Замінити на твій справжній URL
+WEBHOOK_URL = 'https://telegram-discord-bot-xbca.onrender.com/webhook'  # Обов'язково включай "/webhook"
 
 app = Flask(__name__)
+
+# 🔻 Telegram application
 application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-# 👇 Видаляємо непотрібні слова
+# ❌ Заборонені слова
 BANNED_WORDS = ['𝑪𝑹𝑺𝑻𝑳𝑼𝑨']
+
 
 def parse_entities(text, entities):
     if not entities:
@@ -24,11 +28,7 @@ def parse_entities(text, entities):
 
     for ent in entities:
         result += text[last_offset:ent.offset]
-        if ent.type == 'text_link':
-            display_text = text[ent.offset:ent.offset + ent.length]
-            result += display_text
-        else:
-            result += text[ent.offset:ent.offset + ent.length]
+        result += text[ent.offset:ent.offset + ent.length]
         last_offset = ent.offset + ent.length
 
     result += text[last_offset:]
@@ -70,27 +70,37 @@ async def forward_to_discord(update: Update, context: ContextTypes.DEFAULT_TYPE)
 application.add_handler(MessageHandler(filters.ALL, forward_to_discord))
 
 
-@app.route("/")
+@app.route('/')
 def home():
-    return "Bot is running"
+    return "✅ Bot is running"
 
 
-@app.route("/webhook", methods=["POST"])
-async def webhook():
-    update = Update.de_json(request.json, application.bot)
-    await application.process_update(update)
-    return "ok"
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    try:
+        update_data = request.get_json(force=True)
+        update = Update.de_json(update_data, application.bot)
+        asyncio.run(application.process_update(update))
+    except Exception as e:
+        print(f"❌ Webhook помилка: {e}")
+    return 'ok', 200
 
 
-async def main():
+def run_flask():
+    app.run(host='0.0.0.0', port=8080)
+
+
+async def set_webhook():
     await application.initialize()
     await application.bot.set_webhook(WEBHOOK_URL)
     await application.start()
-    print("🤖 Бот активував webhook")
+    print("🤖 Webhook встановлено:", WEBHOOK_URL)
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.create_task(main())
-    app.run(host="0.0.0.0", port=8080)
+    # Запускаємо Flask у окремому потоці
+    threading.Thread(target=run_flask).start()
+
+    # Запускаємо асинхронну ініціалізацію Telegram-бота
+    asyncio.run(set_webhook())
 
