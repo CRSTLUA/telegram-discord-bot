@@ -4,18 +4,14 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, ContextTypes, filters
 import asyncio
 import threading
-import json
 
 TELEGRAM_TOKEN = '7833122280:AAGG0fc1bVBLSTD8DAjdkFrBBg88_kDm4gs'
 DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1396893886294790174/ioWp2uCe1jEp22FktJFqzsyQ1wPTm1zrI8T0kWexYMGF70rgQl0XfEwcuaMsd_XugABp'
-WEBHOOK_URL = 'https://telegram-discord-bot-xbca.onrender.com/webhook'  # Обов'язково включай "/webhook"
+WEBHOOK_URL = 'https://telegram-discord-bot-xbca.onrender.com/webhook'
 
 app = Flask(__name__)
-
-# 🔻 Telegram application
 application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-# ❌ Заборонені слова
 BANNED_WORDS = ['𝑪𝑹𝑺𝑻𝑳𝑼𝑨']
 
 
@@ -92,15 +88,13 @@ def run_flask():
 
 async def set_webhook():
     await application.initialize()
-    await application.bot.set_webhook(WEBHOOK_URL)
     await application.start()
+    await application.bot.set_webhook(WEBHOOK_URL)
     print("🤖 Webhook встановлено:", WEBHOOK_URL)
 
 
 if __name__ == "__main__":
-    # Запускаємо Flask у окремому потоці
-    threading.Thread(target=run_flask).start()
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
 
-    # Запускаємо асинхронну ініціалізацію Telegram-бота
     asyncio.run(set_webhook())
-
